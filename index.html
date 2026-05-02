@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento — Saint Germain</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg-secondary: #f5f5f3; --bg-tertiary: #d6d4cc;
+    --text: #1a1a1a; --text-secondary: #6b6b67; --text-tertiary: #9b9b97;
+    --border: rgba(0,0,0,0.12); --border-md: rgba(0,0,0,0.22);
+    --radius-md: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg-secondary: #262624; --bg-tertiary: #2e2e2c;
+      --text: #f0efe8; --text-secondary: #9b9b97; --text-tertiary: #6b6b67;
+      --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.2);
+    }
+  }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg-tertiary); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header-bar {
+    background: #000;
+    padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header-left { display: flex; flex-direction: column; padding: 16px 0 0; }
+  .logo-text {
+    font-size: 22px; font-weight: 700; letter-spacing: 0.22em; color: #fff;
+    text-transform: uppercase; font-family: -apple-system, 'Segoe UI', sans-serif;
+  }
+  .header-subtitle {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.55); text-transform: uppercase;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    padding: 6px 0 16px; border-top: 0.5px solid rgba(255,255,255,0.15); margin-top: 8px;
+  }
+  .header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 18px 0; }
+  .ctrl-label { font-size: 12px; color: rgba(255,255,255,0.55); }
+  input[type=date], select.ctrl-select {
+    font-size: 13px; padding: 7px 11px; border-radius: var(--radius-md);
+    border: 0.5px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08);
+    color: #fff; cursor: pointer; outline: none;
+  }
+  input[type=date]:focus, select.ctrl-select:focus { border-color: rgba(255,255,255,0.6); }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; }
+  select.ctrl-select option { background: #222; color: #fff; }
+  .btn {
+    font-size: 13px; padding: 7px 15px; border-radius: var(--radius-md);
+    border: 0.5px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08);
+    color: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s;
+  }
+  .btn:hover { background: rgba(255,255,255,0.15); }
+  .btn.spinning .icon { display: inline-block; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TABS ── */
+  .tabs-bar {
+    background: #000;
+    padding: 0 32px;
+    display: flex; gap: 0;
+    border-top: 0.5px solid rgba(255,255,255,0.1);
+  }
+  .tab-btn {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 11px 22px; color: rgba(255,255,255,0.45); cursor: pointer;
+    border: none; background: transparent; border-bottom: 2.5px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: rgba(255,255,255,0.75); }
+  .tab-btn.active { color: #fff; border-bottom-color: #fff; }
+
+  /* ── PAGE ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .status-bar { font-size: 12px; color: var(--text-tertiary); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; flex-shrink: 0; }
+  .status-dot.loading { background: #BA7517; animation: pulse 1s infinite; }
+  .status-dot.error { background: #E24B4A; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── PERIOD LABEL ── */
+  .period-label {
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 16px; padding: 10px 14px;
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-md); display: inline-block;
+  }
+
+  /* ── GRID & CARDS ── */
+  .grids { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 680px) { .grids { grid-template-columns: 1fr; } }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+  .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .sup-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-md); }
+  .badge-blue  { background: #E6F1FB; color: #0C447C; }
+  .badge-teal  { background: #E1F5EE; color: #085041; }
+  .badge-amber { background: #FAEEDA; color: #633806; }
+  .badge-pink  { background: #FBEAF0; color: #72243E; }
+  .card-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ── TABLE ── */
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+  .summary-table thead tr { border-bottom: 0.5px solid var(--border-md); }
+  .summary-table thead th { text-align: left; padding: 4px 8px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .summary-table thead th:last-child { text-align: right; }
+  .summary-table tbody tr { border-bottom: 0.5px solid var(--border); }
+  .summary-table tbody td { padding: 4px 8px; color: var(--text); }
+  .summary-table tbody td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .row-group-header td { padding: 7px 8px 2px; font-size: 10px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg-secondary); border-bottom: none !important; }
+  .row-subtotal td { font-weight: 600; background: var(--bg-secondary); border-top: 0.5px solid var(--border-md) !important; }
+  .row-isolated td { color: var(--text-secondary); font-style: italic; }
+  .summary-table tfoot tr { border-top: 1px solid var(--border-md); }
+  .summary-table tfoot td { padding: 6px 8px; font-weight: 600; color: var(--text); }
+  .summary-table tfoot td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ── SKELETON & STATES ── */
+  .skeleton { background: var(--bg-secondary); border-radius: var(--radius-lg); height: 320px; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .no-data { font-size: 13px; color: var(--text-tertiary); padding: 3rem 0; text-align: center; grid-column: 1/-1; }
+  .footer { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header-bar">
+  <div class="header-left">
+    <span class="logo-text">Saint Germain</span>
+    <span class="header-subtitle" id="header-subtitle">Fechamento — Supervisão</span>
+  </div>
+  <div class="header-controls">
+    <!-- DIARIO -->
+    <div id="ctrl-diario" class="tab-controls">
+      <span class="ctrl-label">Data:</span>
+      <input type="date" id="date-filter">
+    </div>
+    <!-- SEMANAL -->
+    <div id="ctrl-semanal" class="tab-controls" style="display:none">
+      <span class="ctrl-label">Semana:</span>
+      <select class="ctrl-select" id="week-filter"></select>
+    </div>
+    <!-- MENSAL -->
+    <div id="ctrl-mensal" class="tab-controls" style="display:none">
+      <span class="ctrl-label">Mês:</span>
+      <select class="ctrl-select" id="month-filter"></select>
+    </div>
+    <button class="btn" id="btn-refresh"><span class="icon">↻</span> Atualizar</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" data-tab="diario">Diário</button>
+  <button class="tab-btn" data-tab="semanal">Semanal</button>
+  <button class="tab-btn" data-tab="mensal">Mensal</button>
+</div>
+
+<div class="page">
+  <div class="status-bar">
+    <span class="status-dot loading" id="status-dot"></span>
+    <span id="status-text">Buscando dados da planilha...</span>
+  </div>
+
+  <!-- ABA DIÁRIO -->
+  <div class="tab-panel active" id="panel-diario">
+    <div class="grids" id="grids-diario">
+      <div class="skeleton"></div><div class="skeleton"></div>
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </div>
+
+  <!-- ABA SEMANAL -->
+  <div class="tab-panel" id="panel-semanal">
+    <div id="period-label-semanal" class="period-label" style="display:none"></div>
+    <div class="grids" id="grids-semanal">
+      <div class="skeleton"></div><div class="skeleton"></div>
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </div>
+
+  <!-- ABA MENSAL -->
+  <div class="tab-panel" id="panel-mensal">
+    <div id="period-label-mensal" class="period-label" style="display:none"></div>
+    <div class="grids" id="grids-mensal">
+      <div class="skeleton"></div><div class="skeleton"></div>
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </div>
+
+  <div class="footer">Dados atualizados automaticamente via Google Forms / Sheets</div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  CONFIGURAÇÃO
+// ─────────────────────────────────────────────
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR_QrkVvQYd0EPvdSZVPhOGCYDfHW3RDGPFUQnZqiB21g2f9f73RJyz7c-5OFcaxSSFMC-xpoVTfVXo/pub?output=csv';
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+const SUPERVISORS = [
+  { match:'LUCAS - MARKETPLACE',   key:'LUCAS',    fullName:'Lucas — Marketplace',   badge:'badge-blue',  color:'#378ADD', colLabel:'Marketplaces',   mode:'lucas'    },
+  { match:'VITORIA - COMERCIAL',   key:'VITORIA',  fullName:'Vitória — Comercial',   badge:'badge-teal',  color:'#1D9E75', colLabel:'Comercial',      mode:'vitoria'  },
+  { match:'RICARDO - SITE',        key:'RICARDO',  fullName:'Ricardo — Site',        badge:'badge-amber', color:'#BA7517', colLabel:'Transportadoras', mode:'ricardo'  },
+  { match:'GABRIELE - PÓS VENDAS', key:'GABRIELE', fullName:'Gabriele — Pós Vendas', badge:'badge-pink',  color:'#D4537E', colLabel:'Pedidos',         mode:'gabriele' },
+];
+
+const C = {
+  date:'Dia do Fechamento', sup:'SUPERVISOR',
+  shopee:'SHOPEE QTD. PEDIDOS:', magalu:'MAGALU QTD. PEDIDOS:', zattini:'ZATTINI QTD: PEDIDOS:',
+  amazon:'AMAZON QTD. PEDIDOS:', meliSaint:'MELI SAINT QTD. PEDIDOS:', meliFlex:'MELI FLEX QTD. PEDIDOS:',
+  tiktok:'TIKTOK QTD. PEDIDOS:', renner:'RENNER QTD. PEDIDOS:', shein:'SHEIN QTD. PEDIDOS:', dafiti:'DAFITI QTD. PEDIDOS:',
+  correios:'CORREIOS QTD. PEDIDOS:', jadlog:'JADLOG QTD:PEDIDOS:', loggi:'LOGGI QTD. PEDIDOS:',
+  estoca:'ESTOCA QTD. PEDIDOS:', totalExp:'TOTAL EXPRESS QTD. PEDIDOS:', jt:'J & T QTD. PEDIDOS:',
+  atacadoQtd:'ATACADO CORREIOS QTD. PEDIDOS', atacadoIt:'ATACADO CORREIOS QTD. ITENS:',
+  quiosqueBC:'QUIOSQUE BC:', quiosqueJV:'QUIOSQUE JOINVILLE:', quiosqueBN:'QUIOSQUE BLUMENAU:',
+  quiosqueSP:'QUIOSQUE SP:', embaixad:'EMBAIXADORES:', extras:'EXTRAS:', influs:'INFLUS:',
+  reenvCorr:'REENVIOS CORREIOS:', reenvLoggi:'REENVIOS LOGGI:',
+  persCorr:'PERSONALIZADOS CORREIOS:', persLoggi:'PERSONALIZADOS LOGGI:', persEst:'PERSONALIZADOS ESTOCA:',
+  persTot:'PERSONALIZADOS TOTAL EXP:', persJT:'PERSONALIZADOS J & T:',
+  lentCorr:'LENTES CORREIO:', lentLoggi:'LENTES LOGGI:', lentEst:'LENTES ESTOCA:',
+  lentTot:'LENTES TOTAL EXPRESS:', lentJT:'LENTES J & T:',
+  devCorr:'DEVOLUÇÕES CORREIOS:', devJad:'DEVOLUÇÕES JADLOG:', devLoggi:'DEVOLUÇÕES LOGGI:',
+  devMeli:'DEVOLUÇÕES MELI:', devAli:'DEVOLUÇÕES ALI EXPRESS:', devZattini:'DEVOLUÇÕES ZATTINI:',
+  devEst:'DEVOLUÇÕES ESTOCA:', devShein:'DEVOLUÇÕES SHEIN:', devShopee:'DEVOLUÇÕES SHOPEE:',
+  devRenner:'DEVOLUÇÕES RENNER:', devDafiti:'DEVOLUÇÕES DAFITI:', devAmazon:'DEVOLUÇÕES AMAZON:',
+  devJT:'DEVOLUÇÕES J & T:', devMagalu:'DEVOLUÇÕES MAGALU:', devTiktok:'DEVOLUÇÕES TIKTOK:',
+};
+
+// ─────────────────────────────────────────────
+//  UTILITÁRIOS
+// ─────────────────────────────────────────────
+const charts = {};
+let allRows = [];
+let currentTab = 'diario';
+
+const fmt   = n => Number(n).toLocaleString('pt-BR');
+const gv    = (row, col) => { const x = parseFloat((row[col]||'').toString().replace(',','.')); return isNaN(x) ? 0 : x; };
+const toISO = ds => {
+  if (!ds) return '';
+  ds = ds.trim().split(' ')[0];
+  if (ds.includes('/')) { const [d,m,y] = ds.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+  return ds;
+};
+
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// Retorna semana do mês (1-based) pelo dia: dias 1-7 = S1, 8-14 = S2, etc.
+function weekOfMonth(iso) {
+  if (!iso) return null;
+  const day = parseInt(iso.split('-')[2]);
+  return Math.ceil(day / 7);
+}
+
+// Retorna chave única de semana: "YYYY-MM-W#"
+function weekKey(iso) {
+  if (!iso) return null;
+  const [y, m] = iso.split('-');
+  return `${y}-${m}-S${weekOfMonth(iso)}`;
+}
+
+// Rótulo legível da semana
+function weekLabel(key) {
+  // key = "2024-05-S2"
+  const [y, m, s] = key.split('-');
+  const wn = parseInt(s.replace('S',''));
+  const startDay = (wn - 1) * 7 + 1;
+  const endDay   = Math.min(wn * 7, new Date(parseInt(y), parseInt(m), 0).getDate());
+  return `Semana ${wn} — ${startDay} a ${endDay}/${m}/${y}`;
+}
+
+// Rótulo do mês
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return `${MONTHS_PT[parseInt(m)-1]} de ${y}`;
+}
+
+// ─────────────────────────────────────────────
+//  BUILD DATA (por linha)
+// ─────────────────────────────────────────────
+function buildData(row, mode) {
+  if (mode === 'lucas') return [
+    {label:'Shopee',     val:gv(row,C.shopee)},   {label:'Magalu',     val:gv(row,C.magalu)},
+    {label:'Zattini',    val:gv(row,C.zattini)},  {label:'Amazon',     val:gv(row,C.amazon)},
+    {label:'Meli Saint', val:gv(row,C.meliSaint)},{label:'Meli Flex',  val:gv(row,C.meliFlex)},
+    {label:'TikTok',     val:gv(row,C.tiktok)},   {label:'Renner',     val:gv(row,C.renner)},
+    {label:'Shein',      val:gv(row,C.shein)},    {label:'Dafiti',     val:gv(row,C.dafiti)},
+  ].filter(i => i.val > 0);
+
+  if (mode === 'vitoria') return {
+    isolated: [
+      {label:'Atacado (qtd)', val:gv(row,C.atacadoQtd)},
+    ].filter(i => i.val > 0),
+    sumable: [
+      {label:'Atacado (itens)', val:gv(row,C.atacadoIt)},
+      {label:'Quiosque BC',     val:gv(row,C.quiosqueBC)},
+      {label:'Quiosque JV',     val:gv(row,C.quiosqueJV)},
+      {label:'Quiosque BNU',    val:gv(row,C.quiosqueBN)},
+      {label:'Quiosque SP',     val:gv(row,C.quiosqueSP)},
+      {label:'Embaixadores',    val:gv(row,C.embaixad)},
+      {label:'Extras',          val:gv(row,C.extras)},
+      {label:'Influs',          val:gv(row,C.influs)},
+    ].filter(i => i.val > 0),
+  };
+
+  if (mode === 'ricardo') return [
+    {label:'Correios',   val:gv(row,C.correios)},
+    {label:'Jadlog',     val:gv(row,C.jadlog)},
+    {label:'Loggi',      val:gv(row,C.loggi)},
+    {label:'Estoca',     val:gv(row,C.estoca)},
+    {label:'Total Exp.', val:gv(row,C.totalExp)},
+    {label:'J & T',      val:gv(row,C.jt)},
+  ].filter(i => i.val > 0);
+
+  if (mode === 'gabriele') return [
+    { name:'Reenvios', items:[
+      {label:'Reenvios Correios', val:gv(row,C.reenvCorr)},
+      {label:'Reenvios Loggi',    val:gv(row,C.reenvLoggi)},
+    ]},
+    { name:'Personalizados', items:[
+      {label:'Pers. Correios',   val:gv(row,C.persCorr)},
+      {label:'Pers. Loggi',      val:gv(row,C.persLoggi)},
+      {label:'Pers. Estoca',     val:gv(row,C.persEst)},
+      {label:'Pers. Total Exp.', val:gv(row,C.persTot)},
+      {label:'Pers. J & T',      val:gv(row,C.persJT)},
+    ]},
+    { name:'Lentes', items:[
+      {label:'Lentes Correio',     val:gv(row,C.lentCorr)},
+      {label:'Lentes Loggi',       val:gv(row,C.lentLoggi)},
+      {label:'Lentes Estoca',      val:gv(row,C.lentEst)},
+      {label:'Lentes Total Exp.',  val:gv(row,C.lentTot)},
+      {label:'Lentes J & T',       val:gv(row,C.lentJT)},
+    ]},
+    { name:'Devoluções', items:[
+      {label:'Devol. Correios', val:gv(row,C.devCorr)},  {label:'Devol. Jadlog',   val:gv(row,C.devJad)},
+      {label:'Devol. Loggi',    val:gv(row,C.devLoggi)}, {label:'Devol. Meli',     val:gv(row,C.devMeli)},
+      {label:'Devol. Ali Exp.', val:gv(row,C.devAli)},   {label:'Devol. Zattini',  val:gv(row,C.devZattini)},
+      {label:'Devol. Estoca',   val:gv(row,C.devEst)},   {label:'Devol. Shein',    val:gv(row,C.devShein)},
+      {label:'Devol. Shopee',   val:gv(row,C.devShopee)},{label:'Devol. Renner',   val:gv(row,C.devRenner)},
+      {label:'Devol. Dafiti',   val:gv(row,C.devDafiti)},{label:'Devol. Amazon',   val:gv(row,C.devAmazon)},
+      {label:'Devol. J & T',    val:gv(row,C.devJT)},   {label:'Devol. Magalu',   val:gv(row,C.devMagalu)},
+      {label:'Devol. TikTok',   val:gv(row,C.devTiktok)},
+    ]},
+  ].map(grp => ({...grp, items: grp.items.filter(i => i.val > 0)})).filter(grp => grp.items.length > 0);
+}
+
+// ─────────────────────────────────────────────
+//  AGREGAR múltiplas linhas do mesmo supervisor
+// ─────────────────────────────────────────────
+function mergeData(rows, mode) {
+  // Soma os valores de múltiplas linhas para o mesmo supervisor/modo
+  if (mode === 'lucas' || mode === 'ricardo') {
+    const map = {};
+    rows.forEach(row => {
+      const items = buildData(row, mode);
+      items.forEach(i => { map[i.label] = (map[i.label] || 0) + i.val; });
+    });
+    return Object.entries(map).filter(([,v]) => v > 0).map(([label, val]) => ({label, val}));
+  }
+  if (mode === 'vitoria') {
+    const iso = {}, sum = {};
+    rows.forEach(row => {
+      const d = buildData(row, mode);
+      d.isolated.forEach(i => { iso[i.label] = (iso[i.label] || 0) + i.val; });
+      d.sumable.forEach(i => { sum[i.label] = (sum[i.label] || 0) + i.val; });
+    });
+    return {
+      isolated: Object.entries(iso).filter(([,v]) => v > 0).map(([label, val]) => ({label, val})),
+      sumable:  Object.entries(sum).filter(([,v]) => v > 0).map(([label, val]) => ({label, val})),
+    };
+  }
+  if (mode === 'gabriele') {
+    const groupMap = {};
+    rows.forEach(row => {
+      const groups = buildData(row, mode);
+      groups.forEach(grp => {
+        if (!groupMap[grp.name]) groupMap[grp.name] = {};
+        grp.items.forEach(i => { groupMap[grp.name][i.label] = (groupMap[grp.name][i.label] || 0) + i.val; });
+      });
+    });
+    return Object.entries(groupMap).map(([name, items]) => ({
+      name,
+      items: Object.entries(items).filter(([,v]) => v > 0).map(([label, val]) => ({label, val})),
+    })).filter(grp => grp.items.length > 0);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  FLAT ITEMS (para gráfico)
+// ─────────────────────────────────────────────
+function flatItems(mode, data) {
+  if (mode === 'vitoria')  return [...data.isolated, ...data.sumable];
+  if (mode === 'gabriele') return data.flatMap(g => g.items);
+  return data;
+}
+
+// ─────────────────────────────────────────────
+//  BUILD TABLE HTML
+// ─────────────────────────────────────────────
+function buildTable(mode, colLabel, data) {
+  if (mode === 'lucas' || mode === 'ricardo') {
+    const tot = data.reduce((s,i) => s+i.val, 0);
+    return `<table class="summary-table"><thead><tr><th>${colLabel}</th><th>Qtd.</th></tr></thead>
+      <tbody>${data.map(i=>`<tr><td>${i.label}</td><td>${fmt(i.val)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td>${fmt(tot)}</td></tr></tfoot></table>`;
+  }
+  if (mode === 'vitoria') {
+    const tot = data.sumable.reduce((s,i) => s+i.val, 0);
+    const iR  = data.isolated.map(i=>`<tr class="row-isolated"><td>${i.label} <span style="font-size:10px;opacity:0.6">(informativo)</span></td><td>${fmt(i.val)}</td></tr>`).join('');
+    const sR  = data.sumable.map(i=>`<tr><td>${i.label}</td><td>${fmt(i.val)}</td></tr>`).join('');
+    return `<table class="summary-table"><thead><tr><th>${colLabel}</th><th>Qtd.</th></tr></thead>
+      <tbody>${iR}${sR}</tbody><tfoot><tr><td>Total</td><td>${fmt(tot)}</td></tr></tfoot></table>`;
+  }
+  if (mode === 'gabriele') {
+    let rows = '', grand = 0;
+    data.forEach(grp => {
+      const sub = grp.items.reduce((s,i) => s+i.val, 0); grand += sub;
+      rows += `<tr class="row-group-header"><td colspan="2">${grp.name}</td></tr>`;
+      rows += grp.items.map(i=>`<tr><td style="padding-left:16px">${i.label}</td><td>${fmt(i.val)}</td></tr>`).join('');
+      rows += `<tr class="row-subtotal"><td>Total ${grp.name}</td><td>${fmt(sub)}</td></tr>`;
+    });
+    return `<table class="summary-table"><thead><tr><th>${colLabel}</th><th>Qtd.</th></tr></thead>
+      <tbody>${rows}</tbody><tfoot><tr><td>Total Geral</td><td>${fmt(grand)}</td></tr></tfoot></table>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  DRAW CHART
+// ─────────────────────────────────────────────
+function drawChart(key, items, sup) {
+  const ctx = document.getElementById('chart-' + key);
+  if (!ctx) return;
+  if (charts[key]) charts[key].destroy();
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const tick   = isDark ? '#9b9b97' : '#888780';
+  charts[key] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: items.map(i => i.label),
+      datasets: [{ label: sup.colLabel, data: items.map(i => i.val),
+        backgroundColor: sup.color + '28', borderColor: sup.color, borderWidth: 1.5, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) } } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, color: tick, callback: v => fmt(v) }, grid: { color: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(136,135,128,0.12)' } },
+        y: { ticks: { font: { size: 10 }, color: tick, autoSkip: false }, grid: { display: false } }
+      },
+      animation: { onComplete: function() {
+        const ch = this, c2 = ch.ctx;
+        c2.save(); c2.font = '500 10px sans-serif'; c2.fillStyle = sup.color; c2.textAlign = 'left'; c2.textBaseline = 'middle';
+        ch.data.datasets.forEach((ds, di) => {
+          ch.getDatasetMeta(di).data.forEach((bar, bi) => {
+            if (ds.data[bi] > 0) { const p = bar.getProps(['x','y'], true); c2.fillText(fmt(ds.data[bi]), p.x + 4, p.y); }
+          });
+        });
+        c2.restore();
+      }}
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  RENDER GENÉRICO (recebe rows já filtradas + gridsId + chartKeyPrefix)
+// ─────────────────────────────────────────────
+function renderCards(filteredRows, gridsId, keyPrefix, emptyMsg) {
+  const grids = document.getElementById(gridsId);
+  grids.innerHTML = '';
+
+  // Agrupa por supervisor
+  const bySupMatch = {};
+  filteredRows.forEach(r => {
+    const k = (r[C.sup]||'').trim().toUpperCase();
+    if (!bySupMatch[k]) bySupMatch[k] = [];
+    bySupMatch[k].push(r);
+  });
+
+  let rendered = 0;
+  SUPERVISORS.forEach((sup, idx) => {
+    const rows = bySupMatch[sup.match];
+    if (!rows || !rows.length) return;
+    const data = mergeData(rows, sup.mode);
+    const ci   = flatItems(sup.mode, data);
+    if (!ci.length) return;
+    rendered++;
+    const h    = Math.max(100, ci.length * 34);
+    const cKey = keyPrefix + idx;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="sup-badge ${sup.badge}">${sup.key}</span>
+        <span class="card-name">${sup.fullName}</span>
+      </div>
+      <div class="chart-wrap" style="height:${h}px">
+        <canvas id="chart-${cKey}" role="img" aria-label="Gráfico ${sup.fullName}."></canvas>
+      </div>
+      ${buildTable(sup.mode, sup.colLabel, data)}
+    `;
+    grids.appendChild(card);
+    setTimeout(() => drawChart(cKey, ci, sup), 60);
+  });
+
+  if (!rendered) {
+    grids.innerHTML = `<div class="no-data">${emptyMsg}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  RENDER DIÁRIO
+// ─────────────────────────────────────────────
+function renderDiario(dateISO) {
+  const rows = allRows.filter(r => toISO(r[C.date]) === dateISO);
+  renderCards(rows, 'grids-diario', 'd', 'Nenhum dado encontrado para esta data.');
+}
+
+// ─────────────────────────────────────────────
+//  RENDER SEMANAL
+// ─────────────────────────────────────────────
+function renderSemanal(wk) {
+  const rows = allRows.filter(r => weekKey(toISO(r[C.date])) === wk);
+  const lbl  = document.getElementById('period-label-semanal');
+  lbl.style.display = 'inline-block';
+  lbl.textContent   = '📅 ' + weekLabel(wk);
+  renderCards(rows, 'grids-semanal', 's', 'Nenhum dado encontrado para esta semana.');
+}
+
+// ─────────────────────────────────────────────
+//  RENDER MENSAL
+// ─────────────────────────────────────────────
+function renderMensal(mk) {
+  const rows = allRows.filter(r => {
+    const iso = toISO(r[C.date]);
+    if (!iso) return false;
+    return iso.substring(0, 7) === mk;
+  });
+  const lbl = document.getElementById('period-label-mensal');
+  lbl.style.display = 'inline-block';
+  lbl.textContent   = '📅 ' + monthLabel(mk);
+  renderCards(rows, 'grids-mensal', 'm', 'Nenhum dado encontrado para este mês.');
+}
+
+// ─────────────────────────────────────────────
+//  POPULAR FILTROS SEMANAL E MENSAL
+// ─────────────────────────────────────────────
+function populateFilters() {
+  const isos = [...new Set(allRows.map(r => toISO(r[C.date])).filter(Boolean))].sort().reverse();
+
+  // Semanas únicas
+  const weeks = [...new Set(isos.map(iso => weekKey(iso)).filter(Boolean))].sort().reverse();
+  const wSel  = document.getElementById('week-filter');
+  const prevW = wSel.value;
+  wSel.innerHTML = weeks.map(w => `<option value="${w}">${weekLabel(w)}</option>`).join('');
+  if (weeks.includes(prevW)) wSel.value = prevW; else wSel.value = weeks[0] || '';
+
+  // Meses únicos
+  const months = [...new Set(isos.map(iso => iso.substring(0,7)).filter(Boolean))].sort().reverse();
+  const mSel   = document.getElementById('month-filter');
+  const prevM  = mSel.value;
+  mSel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if (months.includes(prevM)) mSel.value = prevM; else mSel.value = months[0] || '';
+}
+
+// ─────────────────────────────────────────────
+//  STATUS
+// ─────────────────────────────────────────────
+function setStatus(state, text) {
+  document.getElementById('status-dot').className = 'status-dot' + (state === 'loading' ? ' loading' : state === 'error' ? ' error' : '');
+  document.getElementById('status-text').textContent = text;
+}
+
+// ─────────────────────────────────────────────
+//  RENDERIZAR ABA ATUAL
+// ─────────────────────────────────────────────
+function renderCurrent() {
+  if (currentTab === 'diario') {
+    renderDiario(document.getElementById('date-filter').value);
+  } else if (currentTab === 'semanal') {
+    const wk = document.getElementById('week-filter').value;
+    if (wk) renderSemanal(wk);
+  } else if (currentTab === 'mensal') {
+    const mk = document.getElementById('month-filter').value;
+    if (mk) renderMensal(mk);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  LOAD DATA
+// ─────────────────────────────────────────────
+function loadData(silent) {
+  if (!silent) {
+    setStatus('loading', 'Buscando dados da planilha...');
+    document.getElementById('btn-refresh').classList.add('spinning');
+  }
+  const url = CSV_URL + '&cachebust=' + Date.now();
+  Papa.parse(url, {
+    download: true, header: true, skipEmptyLines: true,
+    complete(results) {
+      allRows = results.data;
+
+      // Filtro diário
+      const isos  = [...new Set(allRows.map(r => toISO(r[C.date])).filter(Boolean))].sort().reverse();
+      const dInp  = document.getElementById('date-filter');
+      const prevD = dInp.value;
+      dInp.value  = isos.includes(prevD) ? prevD : (isos[0] || '');
+
+      populateFilters();
+      renderCurrent();
+
+      setStatus('ok', `Atualizado em ${new Date().toLocaleString('pt-BR')}`);
+      document.getElementById('btn-refresh').classList.remove('spinning');
+    },
+    error() {
+      setStatus('error', 'Erro ao buscar dados. Verifique se a planilha está publicada.');
+      document.getElementById('btn-refresh').classList.remove('spinning');
+      ['grids-diario','grids-semanal','grids-mensal'].forEach(id => {
+        document.getElementById(id).innerHTML = '<div class="no-data">Não foi possível carregar os dados.</div>';
+      });
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  TABS
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentTab = btn.dataset.tab;
+
+    // Atualiza botões
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Atualiza painéis
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + currentTab).classList.add('active');
+
+    // Atualiza controles do header
+    document.querySelectorAll('.tab-controls').forEach(c => c.style.display = 'none');
+    document.getElementById('ctrl-' + currentTab).style.display = 'flex';
+    document.getElementById('ctrl-' + currentTab).style.alignItems = 'center';
+    document.getElementById('ctrl-' + currentTab).style.gap = '10px';
+
+    renderCurrent();
+  });
+});
+
+// ─────────────────────────────────────────────
+//  EVENTOS
+// ─────────────────────────────────────────────
+document.getElementById('date-filter').addEventListener('change', function() {
+  renderDiario(this.value);
+});
+document.getElementById('week-filter').addEventListener('change', function() {
+  if (this.value) renderSemanal(this.value);
+});
+document.getElementById('month-filter').addEventListener('change', function() {
+  if (this.value) renderMensal(this.value);
+});
+document.getElementById('btn-refresh').addEventListener('click', () => loadData(false));
+
+// Inicializa
+loadData(false);
+setInterval(() => loadData(true), AUTO_REFRESH_MS);
+</script>
+</body>
+</html>
